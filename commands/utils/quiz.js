@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder, ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder } = require("discord.js");
 const fs = require('fs');
 const path = require('path');
 
@@ -69,28 +69,41 @@ module.exports = {
                 .map(r => `${r.short}0`)
                 .join('');
 
-            const introEmbed = new EmbedBuilder()
-                .setColor(quiz.color)
-                .setThumbnail(quiz.thumbnail || null)
-                .setDescription(
-                    `## ${quiz.name}\n` +
-                    `${quiz.description}\n\n` +
-                    `**Você pode ganhar os seguintes cargos nesse quiz:**\n` +
-                    Object.values(quiz.roles).map(r => `• <@&${r.id}>`).join('\n') +
-                    `\n\n-# Clique no botão abaixo para começar o quiz e descobrir!`
-                );
+            const thumbnail = quiz.thumbnail ? quiz.thumbnail : 'https://i.imgur.com/wA1w4BZ.png';
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`quiz_${theme}_start_${initialPoints}`)
-                    .setLabel("Começar Quiz")
-                    .setEmoji("📝")
-                    .setStyle(ButtonStyle.Success)
-            );
+            const introComponent = [
+                new ContainerBuilder()
+                    .setAccentColor(parseInt(quiz.color.replace('#', ''), 16))
+                    .addSectionComponents(
+                        new SectionBuilder()
+                            .setThumbnailAccessory(
+                                new ThumbnailBuilder()
+                                    .setURL(thumbnail)
+                            )
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder()
+                                    .setContent(
+                                        `## ${quiz.name}\n` +
+                                        `${quiz.description}\n\n` +
+                                        `**Você pode ganhar os seguintes cargos nesse quiz:**\n` +
+                                        Object.values(quiz.roles).map(r => `• <@&${r.id}>`).join('\n') +
+                                        `\n\n-# Clique no botão abaixo para começar o quiz e descobrir!`
+                                    )
+                            )
+                    ),
+                new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`quiz_${theme}_start_${initialPoints}`)
+                            .setStyle(ButtonStyle.Success)
+                            .setLabel("Começar Quiz")
+                            .setEmoji("📝")
+                    )
+            ]
 
             await interaction.channel.send({
-                embeds: [introEmbed],
-                components: [row]
+                components: introComponent,
+                flags: MessageFlags.IsComponentsV2
             });
 
             return await interaction.reply({
@@ -102,15 +115,18 @@ module.exports = {
         if (subcommand === "listar") {
             if (quizes.size === 0) return interaction.reply({ content: "Nenhum quiz carregado.", flags: [MessageFlags.Ephemeral] });
 
-            const embed = new EmbedBuilder()
-                .setColor("#E50914")
-                .setDescription(
-                    `## 📂 Quizzes Carregados\n` +
-                    `${quizes.map(q => `- **${q.name}** (ID: \`${q.id}\`)`).join('\n')}` +
-                    `\n\n-# **${quizes.size}** quiz(zes) carregado(s)`
-                )
+            const components = [
+                new ContainerBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+                            `## 📂 Quizzes Carregados\n` +
+                            `${quizes.map(q => `- **${q.name}** (ID: \`${q.id}\`)`).join('\n')}` +
+                            `\n\n-# **${quizes.size}** quiz(zes) carregado(s)`
+                        ),
+                    ),
+            ];
 
-            return await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+            return await interaction.reply({ components: components, flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral] });
         }
 
         // --- UPLOAD ---
